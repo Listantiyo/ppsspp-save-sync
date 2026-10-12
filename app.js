@@ -144,25 +144,82 @@ function formatSize(value) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+
 function renderFiles() {
   if (!state.files.length) {
-    saveList.innerHTML = '<div class="empty-state"><div class="empty-icon">☁</div><p>Belum ada backup. Pilih folder save game lalu upload.</p></div>';
+    saveList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">☁</div>
+        <p>Belum ada backup. Pilih folder save game lalu upload.</p>
+      </div>`;
     return;
   }
+
   saveList.innerHTML = state.files.map((file) => {
-    const created = file.createdTime ? new Date(file.createdTime).toLocaleString() : "Tanggal tidak tersedia";
-    return `<article class="save-item">
-      <div class="file-icon" aria-hidden="true">ZIP</div>
-      <div class="save-meta">
-        <div class="save-name">${escapeHtml(file.name)}</div>
-        <div class="save-detail">${formatSize(file.size)} · ${escapeHtml(created)}</div>
-      </div>
-      <button class="button button-secondary download-btn" data-download="${escapeHtml(file.id)}" data-name="${escapeHtml(file.name)}">Download ZIP</button>
-    </article>`;
+    const created = file.createdTime
+      ? new Date(file.createdTime).toLocaleString()
+      : "Tanggal tidak tersedia";
+
+    return `
+      <article class="save-item">
+        <div class="file-icon" aria-hidden="true">ZIP</div>
+
+        <div class="save-meta">
+          <div class="save-name">${escapeHtml(file.name)}</div>
+          <div class="save-detail">
+            ${formatSize(file.size)} · ${escapeHtml(created)}
+          </div>
+        </div>
+
+        <button
+          class="button button-secondary download-btn"
+          data-download="${escapeHtml(file.id)}"
+          data-name="${escapeHtml(file.name)}">
+          Download ZIP
+        </button>
+
+        <button
+          class="button button-secondary"
+          data-delete="${escapeHtml(file.id)}"
+          data-name="${escapeHtml(file.name)}">
+          Hapus
+        </button>
+      </article>`;
   }).join("");
+
   saveList.querySelectorAll("[data-download]").forEach((button) => {
-    button.addEventListener("click", () => downloadFile(button.dataset.download, button.dataset.name));
+    button.addEventListener("click", () => {
+      downloadFile(button.dataset.download, button.dataset.name);
+    });
   });
+
+  saveList.querySelectorAll("[data-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteFile(button.dataset.delete, button.dataset.name);
+    });
+  });
+}
+
+
+async function deleteFile(fileId, filename) {
+  const confirmed = window.confirm(
+    `Yakin ingin menghapus backup "${filename}" dari Google Drive?\n\n` +
+    "File save lokal di HP atau komputer tidak akan terhapus."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await driveRequest(
+      `/files/${encodeURIComponent(fileId)}`,
+      { method: "DELETE" }
+    );
+
+    toast("Backup berhasil dihapus dari Google Drive.");
+    await refreshFiles();
+  } catch (error) {
+    toast(error.message || "Gagal menghapus backup.", true);
+  }
 }
 
 function collectSelectedFiles() {
