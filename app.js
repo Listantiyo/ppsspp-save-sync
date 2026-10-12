@@ -1,7 +1,7 @@
 /*
  * PPSSPP Save Sync
- * Configure GOOGLE_CLIENT_ID in this file after creating a Google OAuth Web client.
- * This app uses the Google Drive API directly; no backend server is required.
+ * Google Drive direct integration, no backend required.
+ * JSZip is loaded from a CDN in index.html.
  */
 const GOOGLE_CLIENT_ID = "319809532032-udfumiepdnneimugl7e06p7e8ir4pldf.apps.googleusercontent.com";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -14,6 +14,8 @@ const connectBtn = $("connect-btn");
 const uploadBtn = $("upload-btn");
 const refreshBtn = $("refresh-btn");
 const saveList = $("save-list");
+const folderInput = $("save-folder");
+const filesInput = $("save-files");
 
 function toast(message, isError = false) {
   const el = $("toast");
@@ -35,8 +37,8 @@ function setConnected(connected) {
 }
 
 function ensureConfigured() {
-  if (GOOGLE_CLIENT_ID.includes("YOUR ID")) {
-    toast("Konfigurasikan GOOGLE_CLIENT_ID di app.js terlebih dahulu.", true);
+  if (GOOGLE_CLIENT_ID.includes("PASTE_YOUR")) {
+    toast("Client ID belum diisi di app.js. Tempelkan OAuth Client ID lalu commit.", true);
     return false;
   }
   return true;
@@ -144,18 +146,18 @@ function formatSize(value) {
 
 function renderFiles() {
   if (!state.files.length) {
-    saveList.innerHTML = '<div class="empty-state"><div class="empty-icon">☁</div><p>Belum ada save. Upload file pertama dari perangkat ini.</p></div>';
+    saveList.innerHTML = '<div class="empty-state"><div class="empty-icon">☁</div><p>Belum ada backup. Pilih folder save game lalu upload.</p></div>';
     return;
   }
   saveList.innerHTML = state.files.map((file) => {
     const created = file.createdTime ? new Date(file.createdTime).toLocaleString() : "Tanggal tidak tersedia";
     return `<article class="save-item">
-      <div class="file-icon" aria-hidden="true">▤</div>
+      <div class="file-icon" aria-hidden="true">ZIP</div>
       <div class="save-meta">
         <div class="save-name">${escapeHtml(file.name)}</div>
         <div class="save-detail">${formatSize(file.size)} · ${escapeHtml(created)}</div>
       </div>
-      <button class="button button-secondary download-btn" data-download="${escapeHtml(file.id)}" data-name="${escapeHtml(file.name)}">Download</button>
+      <button class="button button-secondary download-btn" data-download="${escapeHtml(file.id)}" data-name="${escapeHtml(file.name)}">Download ZIP</button>
     </article>`;
   }).join("");
   saveList.querySelectorAll("[data-download]").forEach((button) => {
@@ -163,45 +165,78 @@ function renderFiles() {
   });
 }
 
+function collectSelectedFiles() {
+  const folderFiles = Array.from(folderInput.files || []);
+  const selectedFiles = Array.from(filesInput.files || []);
+  if (folderFiles.length) {
+    // Keep the contents of the selected save folder, not its outer folder name.
+    const root = folderFiles[0].webkitRelativePath?.split("/")[0] || "";
+    return folderFiles.map((file) => {
+      const relative = file.webkitRelativePath || file.name;
+      const path = root && relative.startsWith(root + "/") ? relative.slice(root.length + 1) : relative;
+      return { file, path };
+    });
+  }
+  return selectedFiles.map((file) => ({ file, path: file.name }));
+}
+
 async function uploadFiles() {
   if (!state.token) return toast("Hubungkan Google terlebih dahulu.", true);
-  const inputFiles = Array.from($("save-files").files || []);
-  if (!inputFiles.length) return toast("Pilih minimal satu file save.", true);
+  if (!window.JSZip) return toast("Library ZIP belum termuat. Muat ulang halaman.", true);
+
+  const selected = collectSelectedFiles();
+  if (!selected.length) return toast("Pilih folder save game atau beberapa file terlebih dahulu.", true);
   const gameName = $("game-name").value.trim();
   if (!gameName) return toast("Isi nama game terlebih dahulu.", true);
 
   uploadBtn.disabled = true;
   const originalText = uploadBtn.textContent;
-  uploadBtn.textContent = "Mengunggah...";
+  uploadBtn.textContent = "Membuat ZIP...";
   try {
-    if (!state.folderId) state.folderId = await getOrCreateAppFolder();
-    for (const file of inputFiles) {
-      const metadata = {
-        name: `${gameName}__${file.name}`,
-        mimeType: file.type || "application/octet-stream",
-        parents: [state.folderId],
-        description: `PPSSPP Save Sync; game=${gameName}; original=${file.name}`
-      };
-      const boundary = "-------ppssppSyncBoundary" + crypto.randomUUID().replaceAll("-", "");
-      const prefix = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${metadata.mimeType}\r\n\r\n`;
-      const suffix = `\r\n--${boundary}--`;
-      const body = new Blob([prefix, file, suffix], { type: `multipart/related; boundary=${boundary}` });
-      const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,createdTime", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${state.token}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-        body
-      });
-      if (!response.ok) {
-        let message = "";
-        try { message = (await response.json()).error?.message || ""; } catch (_) {}
-        throw new Error(`Upload ${file.name} gagal (${response.status}) ${message}`.trim());
-      }
+    const zip = new JSZip();
+    for (const item of selected) {
+      // Relative paths preserve any nested structure when a folder is selected.
+      zip.file(item.path, item.file);
     }
-    $("save-files").value = "";
+    const zipBlob = await zip.generateAsync({
+      type: "blob",
+      mimeType: "application/zip",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 }
+    });
+
+    if (!state.folderId) state.folderId = await getOrCreateAppFolder();
+    const safeGameName = gameName.replace(/[\\/:*?"<>|]/g, "_");
+    const filename = `${safeGameName}__save.zip`;
+    const metadata = {
+      name: filename,
+      mimeType: "application/zip",
+      parents: [state.folderId],
+      description: `PPSSPP Save Sync; game=${gameName}; files=${selected.length}`
+    };
+    const boundary = "-------ppssppSyncBoundary" + crypto.randomUUID().replaceAll("-", "");
+    const prefix = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/zip\r\n\r\n`;
+    const suffix = `\r\n--${boundary}--`;
+    const body = new Blob([prefix, zipBlob, suffix], { type: `multipart/related; boundary=${boundary}` });
+
+    uploadBtn.textContent = "Mengunggah ZIP...";
+    const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size,createdTime", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${state.token}`, "Content-Type": `multipart/related; boundary=${boundary}` },
+      body
+    });
+    if (!response.ok) {
+      let message = "";
+      try { message = (await response.json()).error?.message || ""; } catch (_) {}
+      throw new Error(`Upload ZIP gagal (${response.status}) ${message}`.trim());
+    }
+
+    folderInput.value = "";
+    filesInput.value = "";
     await refreshFiles();
-    toast(`${inputFiles.length} file berhasil di-upload.`);
+    toast(`${selected.length} file berhasil dikemas dan di-upload sebagai ZIP.`);
   } catch (error) {
-    toast(error.message, true);
+    toast(error.message || "Gagal membuat atau meng-upload ZIP.", true);
   } finally {
     uploadBtn.disabled = !state.token;
     uploadBtn.textContent = originalText;
@@ -222,12 +257,12 @@ async function downloadFile(fileId, filename) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = filename || "ppsspp-save";
+    anchor.download = filename || "ppsspp-save.zip";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-    toast("Download dimulai. Periksa folder Download perangkatmu.");
+    toast("ZIP diunduh. Ekstrak isinya ke folder SAVEDATA PPSSPP yang sesuai.");
   } catch (error) {
     toast(error.message, true);
   }
@@ -236,8 +271,22 @@ async function downloadFile(fileId, filename) {
 connectBtn.addEventListener("click", connectGoogle);
 uploadBtn.addEventListener("click", uploadFiles);
 refreshBtn.addEventListener("click", async () => {
-  try { await refreshFiles(); toast("Daftar save diperbarui."); }
+  try { await refreshFiles(); toast("Daftar backup diperbarui."); }
   catch (error) { toast(error.message, true); }
+});
+
+// Show how many files are selected, so the user can check before uploading.
+folderInput.addEventListener("change", () => {
+  if (folderInput.files.length) {
+    filesInput.value = "";
+    $("selection-status").textContent = `${folderInput.files.length} file dari folder terpilih.`;
+  }
+});
+filesInput.addEventListener("change", () => {
+  if (filesInput.files.length) {
+    folderInput.value = "";
+    $("selection-status").textContent = `${filesInput.files.length} file dipilih.`;
+  }
 });
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
