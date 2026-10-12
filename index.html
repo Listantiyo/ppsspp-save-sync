@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Backup dan pindahkan save game PPSSPP melalui Google Drive.">
+  <title>PPSSPP Save Sync</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">▣</div>
+      <div>
+        <p class="eyebrow">PERSONAL SAVE BACKUP</p>
+        <h1>PPSSPP Save Sync</h1>
+      </div>
+      <span class="pill" id="connection-pill">Belum terhubung</span>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="eyebrow">SAVE GAME, LANJUT DI MANA SAJA</p>
+        <h2>Progress game-mu, <span>tetap aman.</span></h2>
+        <p class="hero-copy">Simpan file save ke Google Drive, lalu unduh di PC atau Android. Tidak perlu server sendiri.</p>
+      </div>
+      <div class="hero-icon" aria-hidden="true">☁</div>
+    </section>
+
+    <section class="panel account-panel">
+      <div class="section-heading">
+        <div>
+          <h3>Akun Google Drive</h3>
+          <p id="account-status">Hubungkan akun Google untuk mulai.</p>
+        </div>
+        <button id="connect-btn" class="button button-primary">Hubungkan Google</button>
+      </div>
+      <p class="fine-print">Aplikasi meminta akses terbatas ke file Drive yang dibuat atau dipilih untuk aplikasi ini. Jangan bagikan token akses kepada siapa pun.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <h3>Upload save</h3>
+          <p>Pilih file save PPSSPP dari perangkat ini.</p>
+        </div>
+        <span class="step">01</span>
+      </div>
+      <label class="field-label" for="game-name">Nama game</label>
+      <input id="game-name" type="text" maxlength="100" placeholder="Contoh: God of War - Chains of Olympus">
+      <label class="field-label" for="save-files">File save</label>
+      <input id="save-files" class="file-input" type="file" multiple>
+      <p class="fine-print">Kamu bisa memilih beberapa file sekaligus. Untuk tahap awal, pilih file save secara manual dari folder PPSSPP.</p>
+      <button id="upload-btn" class="button button-primary" disabled>Upload ke Drive</button>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <h3>Save di cloud</h3>
+          <p>File yang tersedia dari aplikasi ini.</p>
+        </div>
+        <button id="refresh-btn" class="button button-secondary" disabled>Refresh</button>
+      </div>
+      <div id="save-list" class="save-list">
+        <div class="empty-state">
+          <div class="empty-icon">↥</div>
+          <p>Hubungkan Google Drive untuk melihat save.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>PPSSPP Save Sync · Versi awal</p>
+      <p>Periksa nama dan lokasi file sebelum memulihkan save. Backup save lokal terlebih dahulu.</p>
+    </footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
