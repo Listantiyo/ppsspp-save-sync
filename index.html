@@ -10,6 +10,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
   <main class="shell">
@@ -26,7 +27,7 @@
       <div>
         <p class="eyebrow">SAVE GAME, LANJUT DI MANA SAJA</p>
         <h2>Progress game-mu, <span>tetap aman.</span></h2>
-        <p class="hero-copy">Simpan file save ke Google Drive, lalu unduh di PC atau Android. Tidak perlu server sendiri.</p>
+        <p class="hero-copy">Simpan folder save sebagai ZIP ke Google Drive, lalu unduh di PC atau Android. Tidak perlu server sendiri.</p>
       </div>
       <div class="hero-icon" aria-hidden="true">☁</div>
     </section>
@@ -45,38 +46,44 @@
     <section class="panel">
       <div class="section-heading">
         <div>
-          <h3>Upload save</h3>
-          <p>Pilih file save PPSSPP dari perangkat ini.</p>
+          <h3>Backup save game</h3>
+          <p>Pilih satu folder save game agar seluruh file di dalamnya tersimpan sebagai ZIP.</p>
         </div>
         <span class="step">01</span>
       </div>
       <label class="field-label" for="game-name">Nama game</label>
       <input id="game-name" type="text" maxlength="100" placeholder="Contoh: God of War - Chains of Olympus">
-      <label class="field-label" for="save-files">File save</label>
+
+      <label class="field-label" for="save-folder">Pilihan utama: pilih folder save</label>
+      <input id="save-folder" class="file-input" type="file" webkitdirectory directory multiple>
+      <p class="fine-print">Pilih folder save game yang spesifik di dalam SAVEDATA, bukan seluruh folder SAVEDATA.</p>
+
+      <div class="separator-label"><span>atau pilih file manual</span></div>
+      <label class="field-label" for="save-files">Pilih beberapa file</label>
       <input id="save-files" class="file-input" type="file" multiple>
-      <p class="fine-print">Kamu bisa memilih beberapa file sekaligus. Untuk tahap awal, pilih file save secara manual dari folder PPSSPP.</p>
-      <button id="upload-btn" class="button button-primary" disabled>Upload ke Drive</button>
+      <p id="selection-status" class="fine-print">Belum ada file yang dipilih.</p>
+      <button id="upload-btn" class="button button-primary" disabled>Zip &amp; upload ke Drive</button>
     </section>
 
     <section class="panel">
       <div class="section-heading">
         <div>
-          <h3>Save di cloud</h3>
-          <p>File yang tersedia dari aplikasi ini.</p>
+          <h3>Backup di cloud</h3>
+          <p>Setiap backup disimpan sebagai satu file ZIP.</p>
         </div>
         <button id="refresh-btn" class="button button-secondary" disabled>Refresh</button>
       </div>
       <div id="save-list" class="save-list">
         <div class="empty-state">
           <div class="empty-icon">↥</div>
-          <p>Hubungkan Google Drive untuk melihat save.</p>
+          <p>Hubungkan Google Drive untuk melihat backup.</p>
         </div>
       </div>
     </section>
 
     <footer>
-      <p>PPSSPP Save Sync · Versi awal</p>
-      <p>Periksa nama dan lokasi file sebelum memulihkan save. Backup save lokal terlebih dahulu.</p>
+      <p>PPSSPP Save Sync · Versi ZIP</p>
+      <p>Sebelum memulihkan save, backup save lokal terlebih dahulu dan ekstrak ZIP ke folder save game yang sesuai.</p>
     </footer>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
