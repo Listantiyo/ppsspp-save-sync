@@ -35,7 +35,7 @@ function setConnected(connected) {
 }
 
 function ensureConfigured() {
-  if (GOOGLE_CLIENT_ID.includes("PASTE_YOUR")) {
+  if (GOOGLE_CLIENT_ID.includes("319809532032-udfumiepdnneimugl7e06p7e8ir4pldf.apps.googleusercontent.com")) {
     toast("Konfigurasikan GOOGLE_CLIENT_ID di app.js terlebih dahulu.", true);
     return false;
   }
