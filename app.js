@@ -3,7 +3,7 @@
  * Configure GOOGLE_CLIENT_ID in this file after creating a Google OAuth Web client.
  * This app uses the Google Drive API directly; no backend server is required.
  */
-const GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE";
+const GOOGLE_CLIENT_ID = "319809532032-udfumiepdnneimugl7e06p7e8ir4pldf.apps.googleusercontent.com";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const APP_FOLDER_NAME = "PPSSPP-Saves";
 
